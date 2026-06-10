@@ -78,30 +78,33 @@
 
   .match {
     display: grid;
-    grid-template-columns: 38px 1fr 44px 10px 44px 1fr;
-    align-items: center;
+    grid-template-columns: 32px 1fr 46px 1fr;
+    align-items: stretch;
     gap: 5px;
-    padding: 7px 0;
+    padding: 6px 0;
     border-bottom: 1px solid #ececec;
   }
   .match:last-of-type { border-bottom: none; }
-  .match .date { font-size: 10.5px; color: #999; }
-  .match .eq { font-size: 13.5px; line-height: 1.25; }
-  .match .eq.d { text-align: right; }
-  .match .tiret { text-align: center; color: #aaa; font-weight: 700; }
-  .match input {
-    width: 44px;
-    height: 40px;
-    text-align: center;
-    font-size: 17px;
-    font-weight: 700;
+  .match .date { font-size: 10.5px; color: #999; align-self: center; }
+  button.pick {
     border: 2px solid #c5c9d8;
-    border-radius: 9px;
-    outline: none;
+    border-radius: 10px;
     background: #f7f8fc;
+    font-size: 13px;
+    line-height: 1.25;
+    padding: 9px 4px;
+    cursor: pointer;
+    font-family: inherit;
+    color: #1a1a2e;
+    -webkit-tap-highlight-color: transparent;
   }
-  .match input:focus { border-color: #4361ee; background: #fff; }
-  .match input.ok { border-color: #2a9d4a; background: #eefaf1; }
+  button.pick.nul { font-weight: 700; font-size: 11.5px; color: #777; }
+  button.pick.sel {
+    border-color: #2a9d4a;
+    background: #2a9d4a;
+    color: #fff;
+    font-weight: 700;
+  }
 
   .qualifs {
     display: flex;
@@ -134,6 +137,7 @@
     font-weight: 800;
     cursor: pointer;
     margin-bottom: 10px;
+    font-family: inherit;
   }
   .btn.wa { background: #25d366; color: #fff; }
   .btn.copy { background: #fff; color: #1a1a2e; }
@@ -168,10 +172,10 @@
     body { padding: 8px; }
     .card { padding: 11px; }
     .header h1 { font-size: 18px; }
-    .match { grid-template-columns: 30px 1fr 38px 8px 38px 1fr; gap: 4px; }
-    .match .eq { font-size: 12px; }
+    .match { grid-template-columns: 28px 1fr 42px 1fr; gap: 4px; }
+    button.pick { font-size: 11.5px; padding: 8px 2px; }
+    button.pick.nul { font-size: 10.5px; }
     .match .date { font-size: 9.5px; }
-    .match input { width: 38px; height: 36px; font-size: 15px; }
   }
 </style>
 </head>
@@ -181,14 +185,14 @@
   <div class="header">
     <h1>⚽ PRONOS <em>COUPE DU MONDE 2026</em> 🏆</h1>
     <p>Phase de poules · 11 → 28 juin (heures FR)<br>
-    Remplis tes scores, choisis les qualifiés, puis envoie ta grille en bas de page !</p>
+    Pour chaque match, touche l'équipe gagnante (ou « Nul »), choisis les qualifiés, puis envoie ta grille en bas de page !</p>
   </div>
 
   <div class="card nom">
     <label for="pseudo">👤 Ton nom / pseudo</label>
     <input type="text" id="pseudo" placeholder="Ex : Alexis" autocomplete="name">
     <div class="bareme">
-      <b>Barème :</b> score exact = <b>3 pts</b> · bon résultat (victoire/nul) = <b>1 pt</b> ·
+      <b>Barème :</b> bon prono = <b>1 pt</b> ·
       les 2 qualifiés du groupe dans le bon ordre = <b>2 pts</b> (1 pt si bon duo, mauvais ordre).<br>
       ⏰ Grille à envoyer <b>avant le coup d'envoi du 11 juin, 21h</b> !
     </div>
@@ -235,7 +239,8 @@ const GROUPES = [
     matchs: [["17/06",0,1],["18/06",2,3],["23/06",0,2],["24/06",3,1],["27/06",3,0],["27/06",1,2]] },
 ];
 const NB_MATCHS = 72;
-const KEY = "pronos-cdm-2026";
+const KEY = "pronos-cdm-2026-v2";
+let picks = {};   // "gi-mi" -> "1" | "N" | "2"
 
 function nomCourt(e) { return e.replace(/^\S+\s/, ""); }
 function drapeau(e) { return e.split(" ")[0]; }
@@ -249,11 +254,9 @@ GROUPES.forEach((g, gi) => {
   g.matchs.forEach((m, mi) => {
     html += `<div class="match">
       <span class="date">${m[0]}</span>
-      <span class="eq d">${g.equipes[m[1]]}</span>
-      <input type="number" inputmode="numeric" min="0" max="20" id="s-${gi}-${mi}-0">
-      <span class="tiret">–</span>
-      <input type="number" inputmode="numeric" min="0" max="20" id="s-${gi}-${mi}-1">
-      <span class="eq">${g.equipes[m[2]]}</span>
+      <button type="button" class="pick" id="p-${gi}-${mi}-1" onclick="choisir(${gi},${mi},'1')">${g.equipes[m[1]]}</button>
+      <button type="button" class="pick nul" id="p-${gi}-${mi}-N" onclick="choisir(${gi},${mi},'N')">NUL</button>
+      <button type="button" class="pick" id="p-${gi}-${mi}-2" onclick="choisir(${gi},${mi},'2')">${g.equipes[m[2]]}</button>
     </div>`;
   });
   const opts = `<option value="">— choisir —</option>` + g.equipes.map((e, i) => `<option value="${i}">${e}</option>`).join("");
@@ -265,12 +268,17 @@ GROUPES.forEach((g, gi) => {
   cont.appendChild(card);
 });
 
+function choisir(gi, mi, val) {
+  const k = `${gi}-${mi}`;
+  picks[k] = (picks[k] === val) ? undefined : val;   // re-toucher = désélectionner
+  if (picks[k] === undefined) delete picks[k];
+  maj();
+}
+
 // --- Sauvegarde auto + progression ---
 function sauver() {
-  const data = { pseudo: document.getElementById("pseudo").value, v: {} };
-  document.querySelectorAll("input[type=number], select, #pseudo").forEach(el => {
-    if (el.id && el.id !== "pseudo") data.v[el.id] = el.value;
-  });
+  const data = { pseudo: document.getElementById("pseudo").value, picks: picks, q: {} };
+  document.querySelectorAll("select").forEach(el => { data.q[el.id] = el.value; });
   try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
 }
 function restaurer() {
@@ -278,7 +286,8 @@ function restaurer() {
     const data = JSON.parse(localStorage.getItem(KEY) || "null");
     if (!data) return;
     if (data.pseudo) document.getElementById("pseudo").value = data.pseudo;
-    Object.entries(data.v || {}).forEach(([id, val]) => {
+    picks = data.picks || {};
+    Object.entries(data.q || {}).forEach(([id, val]) => {
       const el = document.getElementById(id);
       if (el) el.value = val;
     });
@@ -288,12 +297,11 @@ function maj() {
   let remplis = 0;
   for (let gi = 0; gi < 12; gi++) {
     for (let mi = 0; mi < 6; mi++) {
-      const a = document.getElementById(`s-${gi}-${mi}-0`);
-      const b = document.getElementById(`s-${gi}-${mi}-1`);
-      const ok = a.value !== "" && b.value !== "";
-      if (ok) remplis++;
-      a.classList.toggle("ok", ok);
-      b.classList.toggle("ok", ok);
+      const val = picks[`${gi}-${mi}`];
+      if (val) remplis++;
+      ["1", "N", "2"].forEach(v => {
+        document.getElementById(`p-${gi}-${mi}-${v}`).classList.toggle("sel", val === v);
+      });
     }
     for (let q = 0; q < 2; q++) {
       const s = document.getElementById(`q-${gi}-${q}`);
@@ -317,10 +325,12 @@ function recap() {
   GROUPES.forEach((g, gi) => {
     txt += `\n*GROUPE ${g.lettre}*\n`;
     g.matchs.forEach((m, mi) => {
-      const a = document.getElementById(`s-${gi}-${mi}-0`).value;
-      const b = document.getElementById(`s-${gi}-${mi}-1`).value;
-      const sc = (a !== "" && b !== "") ? `${a}-${b}` : "?-?";
-      txt += `${nomCourt(g.equipes[m[1]])} ${sc} ${nomCourt(g.equipes[m[2]])}\n`;
+      const val = picks[`${gi}-${mi}`];
+      let prono = "?";
+      if (val === "1") prono = nomCourt(g.equipes[m[1]]);
+      else if (val === "2") prono = nomCourt(g.equipes[m[2]]);
+      else if (val === "N") prono = "Nul";
+      txt += `${nomCourt(g.equipes[m[1]])}–${nomCourt(g.equipes[m[2]])} : ${prono}\n`;
     });
     const q1 = document.getElementById(`q-${gi}-0`).value;
     const q2 = document.getElementById(`q-${gi}-1`).value;
