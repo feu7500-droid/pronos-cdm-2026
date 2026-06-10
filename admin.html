@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>🛠️ Admin — Pronos CDM 2026</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #10142b;
+    color: #1a1a2e;
+    padding: 12px;
+  }
+  .wrap { max-width: 680px; margin: 0 auto; }
+  .header { text-align: center; color: #fff; padding: 16px 10px 12px; }
+  .header h1 { font-size: 20px; }
+  .header p { font-size: 13px; opacity: .75; margin-top: 5px; }
+
+  .card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.25);
+  }
+  .card h2 { font-size: 15px; margin-bottom: 8px; }
+  .hint { font-size: 12px; color: #666; line-height: 1.5; margin-bottom: 8px; }
+
+  textarea {
+    width: 100%;
+    min-height: 110px;
+    border: 2px solid #c5c9d8;
+    border-radius: 10px;
+    padding: 10px;
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    resize: vertical;
+  }
+  textarea:focus { border-color: #4361ee; }
+  .btn {
+    display: inline-block;
+    border: none;
+    border-radius: 10px;
+    padding: 11px 18px;
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    margin-top: 8px;
+    background: #4361ee;
+    color: #fff;
+    font-family: inherit;
+  }
+  .btn.danger { background: #e63946; padding: 4px 9px; font-size: 12px; margin: 0; }
+  .msg { font-size: 13px; margin-top: 8px; font-weight: 700; }
+  .msg.ok { color: #2a9d4a; }
+  .msg.err { color: #e63946; }
+
+  .participant {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f4f5fa;
+    border-radius: 9px;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+  .participant b { font-size: 14.5px; }
+  .participant .meta { font-size: 12px; color: #888; }
+
+  .groupe-bloc { margin-bottom: 14px; }
+  .groupe-nom {
+    background: #1a1a2e;
+    color: #fff;
+    border-radius: 8px;
+    padding: 6px 11px;
+    font-weight: 800;
+    font-size: 13px;
+    margin-bottom: 7px;
+  }
+  .match {
+    display: grid;
+    grid-template-columns: 34px 1fr 44px 1fr;
+    align-items: stretch;
+    gap: 4px;
+    padding: 4px 0;
+  }
+  .match .date { font-size: 10px; color: #999; align-self: center; }
+  button.pick {
+    border: 2px solid #c5c9d8;
+    border-radius: 8px;
+    background: #f7f8fc;
+    font-size: 12px;
+    padding: 7px 3px;
+    cursor: pointer;
+    font-family: inherit;
+    color: #1a1a2e;
+  }
+  button.pick.nul { font-size: 10.5px; font-weight: 700; color: #777; }
+  button.pick.sel { border-color: #e9a400; background: #e9a400; color: #fff; font-weight: 700; }
+
+  table.board { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.board th {
+    text-align: left;
+    background: #1a1a2e;
+    color: #fff;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  table.board th:first-child { border-radius: 8px 0 0 8px; }
+  table.board th:last-child { border-radius: 0 8px 8px 0; }
+  table.board td { padding: 9px 10px; border-bottom: 1px solid #ececec; }
+  table.board tr.podium td { background: #fdf6e3; font-weight: 700; }
+  .total { font-weight: 800; color: #2a9d4a; font-size: 15px; }
+  .vide { font-size: 13px; color: #999; font-style: italic; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <h1>🛠️ ADMIN — Pronos CDM 2026</h1>
+    <p>Page organisateur : importe les grilles reçues, saisis les vrais résultats, le classement se calcule tout seul.<br>Tout est stocké sur CET appareil uniquement.</p>
+  </div>
+
+  <div class="card">
+    <h2>📥 Importer une grille reçue</h2>
+    <div class="hint">Colle ici une grille reçue (le texte WhatsApp complet, ou la ligne « code » de l'email de copie), puis clique Importer. Réimporter le même nom remplace son ancienne grille.</div>
+    <textarea id="zone" placeholder="⚽ PRONOS CDM 2026 — Kevin&#10;&#10;*GROUPE A*&#10;Mexique–Afrique du Sud : Mexique&#10;…"></textarea>
+    <button class="btn" onclick="importer()">Importer cette grille</button>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <div class="card">
+    <h2>👥 Participants (<span id="nb">0</span>)</h2>
+    <div id="liste"><div class="vide">Aucune grille importée pour l'instant.</div></div>
+  </div>
+
+  <div class="card">
+    <h2>🏆 Classement des collègues</h2>
+    <div class="hint">Barème : bon prono = 1 pt · les 2 qualifiés d'un groupe dans le bon ordre = 2 pts (1 pt si bon duo, mauvais ordre — compté quand les 6 matchs du groupe sont joués).</div>
+    <div id="board"><div class="vide">Le classement apparaîtra quand tu auras importé des grilles et saisi des résultats.</div></div>
+  </div>
+
+  <div class="card">
+    <h2>🏟️ Résultats réels des matchs</h2>
+    <div class="hint">Au fil de la compétition, touche le vainqueur réel (ou « NUL ») de chaque match — en orange pour ne pas confondre avec des pronos.</div>
+    <div id="groupes"></div>
+  </div>
+
+</div>
+
+<script>
+const GROUPES = [
+  { lettre: "A", equipes: ["🇲🇽 Mexique","🇿🇦 Afrique du Sud","🇰🇷 Corée du Sud","🇨🇿 Tchéquie"],
+    matchs: [["11/06",0,1],["12/06",2,3],["18/06",3,1],["19/06",0,2],["25/06",3,0],["25/06",1,2]] },
+  { lettre: "B", equipes: ["🇨🇦 Canada","🇧🇦 Bosnie-Herzégovine","🇶🇦 Qatar","🇨🇭 Suisse"],
+    matchs: [["12/06",0,1],["13/06",2,3],["18/06",3,1],["19/06",0,2],["24/06",3,0],["24/06",1,2]] },
+  { lettre: "C", equipes: ["🇧🇷 Brésil","🇲🇦 Maroc","🇭🇹 Haïti","🏴󠁧󠁢󠁳󠁣󠁴󠁿 Écosse"],
+    matchs: [["14/06",0,1],["14/06",2,3],["20/06",3,1],["20/06",0,2],["25/06",3,0],["25/06",1,2]] },
+  { lettre: "D", equipes: ["🇺🇸 États-Unis","🇵🇾 Paraguay","🇦🇺 Australie","🇹🇷 Turquie"],
+    matchs: [["13/06",0,1],["14/06",2,3],["19/06",0,2],["20/06",3,1],["26/06",3,0],["26/06",1,2]] },
+  { lettre: "E", equipes: ["🇩🇪 Allemagne","🇨🇼 Curaçao","🇨🇮 Côte d'Ivoire","🇪🇨 Équateur"],
+    matchs: [["14/06",0,1],["15/06",2,3],["20/06",0,2],["21/06",3,1],["25/06",3,0],["25/06",1,2]] },
+  { lettre: "F", equipes: ["🇳🇱 Pays-Bas","🇯🇵 Japon","🇸🇪 Suède","🇹🇳 Tunisie"],
+    matchs: [["14/06",0,1],["15/06",2,3],["20/06",0,2],["21/06",3,1],["26/06",1,2],["26/06",3,0]] },
+  { lettre: "G", equipes: ["🇧🇪 Belgique","🇪🇬 Égypte","🇮🇷 Iran","🇳🇿 Nouvelle-Zélande"],
+    matchs: [["15/06",0,1],["16/06",2,3],["21/06",0,2],["22/06",3,1],["27/06",1,2],["27/06",3,0]] },
+  { lettre: "H", equipes: ["🇪🇸 Espagne","🇨🇻 Cap-Vert","🇸🇦 Arabie saoudite","🇺🇾 Uruguay"],
+    matchs: [["15/06",0,1],["16/06",2,3],["21/06",0,2],["22/06",3,1],["27/06",1,2],["27/06",3,0]] },
+  { lettre: "I", equipes: ["🇫🇷 France","🇸🇳 Sénégal","🇮🇶 Irak","🇳🇴 Norvège"],
+    matchs: [["16/06",0,1],["17/06",2,3],["22/06",0,2],["23/06",3,1],["26/06",3,0],["26/06",1,2]] },
+  { lettre: "J", equipes: ["🇦🇷 Argentine","🇩🇿 Algérie","🇦🇹 Autriche","🇯🇴 Jordanie"],
+    matchs: [["17/06",0,1],["17/06",2,3],["22/06",0,2],["23/06",3,1],["28/06",1,2],["28/06",3,0]] },
+  { lettre: "K", equipes: ["🇵🇹 Portugal","🇨🇩 RD Congo","🇺🇿 Ouzbékistan","🇨🇴 Colombie"],
+    matchs: [["17/06",0,1],["18/06",2,3],["23/06",0,2],["24/06",3,1],["28/06",3,0],["28/06",1,2]] },
+  { lettre: "L", equipes: ["🏴󠁧󠁢󠁥󠁮󠁧󠁿 Angleterre","🇭🇷 Croatie","🇬🇭 Ghana","🇵🇦 Panama"],
+    matchs: [["17/06",0,1],["18/06",2,3],["23/06",0,2],["24/06",3,1],["27/06",3,0],["27/06",1,2]] },
+];
+const KEY = "pronos-admin-cdm2026";
+let db = { participants: {}, resultats: {} };
+try { db = JSON.parse(localStorage.getItem(KEY)) || db; } catch (e) {}
+
+function nomCourt(e) { return e.replace(/^\S+\s/, ""); }
+function sauver() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {} }
+
+// --- Classement d'un groupe à partir d'un jeu de picks (pronos ou résultats réels) ---
+function classement(gi, picks) {
+  const g = GROUPES[gi];
+  const st = g.equipes.map((e, i) => ({ i, pts: 0, v: 0 }));
+  let complets = 0;
+  g.matchs.forEach((m, mi) => {
+    const val = picks[`${gi}-${mi}`];
+    if (!val) return;
+    complets++;
+    if (val === "1") { st[m[1]].pts += 3; st[m[1]].v++; }
+    else if (val === "2") { st[m[2]].pts += 3; st[m[2]].v++; }
+    else { st[m[1]].pts += 1; st[m[2]].pts += 1; }
+  });
+  st.sort((a, b) => {
+    if (b.pts !== a.pts) return b.pts - a.pts;
+    const duel = g.matchs.findIndex(m => (m[1] === a.i && m[2] === b.i) || (m[1] === b.i && m[2] === a.i));
+    if (duel !== -1) {
+      const val = picks[`${gi}-${duel}`];
+      const m = g.matchs[duel];
+      if (val === "1") return m[1] === a.i ? -1 : 1;
+      if (val === "2") return m[2] === a.i ? -1 : 1;
+    }
+    if (b.v !== a.v) return b.v - a.v;
+    return a.i - b.i;
+  });
+  return { st, complet: complets === 6 };
+}
+
+// --- Import d'une grille (JSON "code" de l'email, ou texte WhatsApp) ---
+function importer() {
+  const brut = document.getElementById("zone").value.trim();
+  const msg = document.getElementById("msg");
+  msg.className = "msg err";
+  if (!brut) { msg.textContent = "Colle d'abord une grille dans la zone."; return; }
+
+  let pseudo = null, picks = null;
+
+  // Tentative 1 : un JSON {pseudo, picks} quelque part dans le texte (champ "code" de l'email)
+  const j = brut.match(/\{"pseudo":.*"picks":\{[^}]*\}\}/);
+  if (j) {
+    try {
+      const data = JSON.parse(j[0]);
+      if (data.pseudo && data.picks) { pseudo = data.pseudo.trim(); picks = data.picks; }
+    } catch (e) {}
+  }
+
+  // Tentative 2 : texte WhatsApp "Equipe1–Equipe2 : Prono"
+  if (!picks) {
+    const mNom = brut.match(/PRONOS CDM 2026\s*[—-]\s*(.+)/);
+    pseudo = mNom ? mNom[1].trim() : null;
+    picks = {};
+    let trouves = 0;
+    const lignes = brut.split("\n");
+    let gi = -1;
+    lignes.forEach(l => {
+      const mG = l.match(/GROUPE\s+([A-L])/i);
+      if (mG) { gi = mG[1].toUpperCase().charCodeAt(0) - 65; return; }
+      if (gi < 0 || gi > 11) return;
+      const mM = l.match(/^(.+?)–(.+?)\s*:\s*(.+)$/);   // tiret long « – » uniquement (les noms d'équipes contiennent des tirets courts)
+      if (!mM) return;
+      const e1 = mM[1].trim(), e2 = mM[2].trim(), prono = mM[3].trim();
+      const g = GROUPES[gi];
+      const mi = g.matchs.findIndex(m => nomCourt(g.equipes[m[1]]) === e1 && nomCourt(g.equipes[m[2]]) === e2);
+      if (mi === -1) return;
+      if (/^nul$/i.test(prono)) { picks[`${gi}-${mi}`] = "N"; trouves++; }
+      else if (prono === nomCourt(g.equipes[g.matchs[mi][1]])) { picks[`${gi}-${mi}`] = "1"; trouves++; }
+      else if (prono === nomCourt(g.equipes[g.matchs[mi][2]])) { picks[`${gi}-${mi}`] = "2"; trouves++; }
+    });
+    if (trouves === 0) picks = null;
+  }
+
+  if (!picks) { msg.textContent = "Format non reconnu. Colle le message complet généré par la page de pronos."; return; }
+  if (!pseudo) { msg.textContent = "Impossible de trouver le nom du participant dans le texte."; return; }
+
+  const nb = Object.keys(picks).length;
+  const deja = db.participants[pseudo] ? " (ancienne grille remplacée)" : "";
+  db.participants[pseudo] = picks;
+  sauver();
+  document.getElementById("zone").value = "";
+  msg.className = "msg ok";
+  msg.textContent = `✅ Grille de « ${pseudo} » importée : ${nb}/72 pronos${deja}.`;
+  rafraichir();
+}
+
+function supprimer(pseudo) {
+  if (!confirm(`Supprimer la grille de « ${pseudo} » ?`)) return;
+  delete db.participants[pseudo];
+  sauver();
+  rafraichir();
+}
+
+// --- Résultats réels ---
+function choisir(gi, mi, val) {
+  const k = `${gi}-${mi}`;
+  db.resultats[k] = (db.resultats[k] === val) ? undefined : val;
+  if (db.resultats[k] === undefined) delete db.resultats[k];
+  sauver();
+  rafraichir();
+}
+
+// --- Calcul des points d'un participant ---
+function points(picks) {
+  let ptsMatchs = 0, ptsQualifs = 0;
+  for (let gi = 0; gi < 12; gi++) {
+    for (let mi = 0; mi < 6; mi++) {
+      const reel = db.resultats[`${gi}-${mi}`];
+      if (reel && picks[`${gi}-${mi}`] === reel) ptsMatchs++;
+    }
+    const reel = classement(gi, db.resultats);
+    const prono = classement(gi, picks);
+    if (reel.complet && prono.complet) {
+      const r1 = reel.st[0].i, r2 = reel.st[1].i, p1 = prono.st[0].i, p2 = prono.st[1].i;
+      if (r1 === p1 && r2 === p2) ptsQualifs += 2;
+      else if ((p1 === r1 || p1 === r2) && (p2 === r1 || p2 === r2)) ptsQualifs += 1;
+    }
+  }
+  return { ptsMatchs, ptsQualifs, total: ptsMatchs + ptsQualifs };
+}
+
+// --- Affichage ---
+function rafraichir() {
+  // participants
+  const noms = Object.keys(db.participants).sort((a, b) => a.localeCompare(b));
+  document.getElementById("nb").textContent = noms.length;
+  const liste = document.getElementById("liste");
+  liste.innerHTML = noms.length === 0
+    ? `<div class="vide">Aucune grille importée pour l'instant.</div>`
+    : noms.map(n => {
+        const nb = Object.keys(db.participants[n]).length;
+        return `<div class="participant"><span><b>${n}</b> <span class="meta">· ${nb}/72 pronos</span></span><button class="btn danger" onclick="supprimer('${n.replace(/'/g, "\\'")}')">✕</button></div>`;
+      }).join("");
+
+  // résultats réels (boutons)
+  const nbRes = Object.keys(db.resultats).length;
+  for (let gi = 0; gi < 12; gi++) {
+    for (let mi = 0; mi < 6; mi++) {
+      const val = db.resultats[`${gi}-${mi}`];
+      ["1", "N", "2"].forEach(v => {
+        document.getElementById(`p-${gi}-${mi}-${v}`).classList.toggle("sel", val === v);
+      });
+    }
+  }
+
+  // classement
+  const board = document.getElementById("board");
+  if (noms.length === 0 || nbRes === 0) {
+    board.innerHTML = `<div class="vide">Le classement apparaîtra quand tu auras importé des grilles et saisi des résultats (${noms.length} grille(s), ${nbRes} résultat(s) saisi(s)).</div>`;
+  } else {
+    const rows = noms.map(n => ({ n, ...points(db.participants[n]) }))
+      .sort((a, b) => b.total - a.total || a.n.localeCompare(b.n));
+    board.innerHTML = `<table class="board">
+      <tr><th>#</th><th>Participant</th><th>Matchs</th><th>Qualifiés</th><th>Total</th></tr>
+      ${rows.map((r, i) => `<tr${i < 3 ? ' class="podium"' : ""}><td>${["🥇","🥈","🥉"][i] || (i + 1)}</td><td>${r.n}</td><td>${r.ptsMatchs} pt${r.ptsMatchs > 1 ? "s" : ""}</td><td>${r.ptsQualifs} pt${r.ptsQualifs > 1 ? "s" : ""}</td><td class="total">${r.total}</td></tr>`).join("")}
+    </table>`;
+  }
+}
+
+// construction des blocs résultats
+const cont = document.getElementById("groupes");
+GROUPES.forEach((g, gi) => {
+  const bloc = document.createElement("div");
+  bloc.className = "groupe-bloc";
+  let html = `<div class="groupe-nom">GROUPE ${g.lettre}</div>`;
+  g.matchs.forEach((m, mi) => {
+    html += `<div class="match">
+      <span class="date">${m[0]}</span>
+      <button type="button" class="pick" id="p-${gi}-${mi}-1" onclick="choisir(${gi},${mi},'1')">${g.equipes[m[1]]}</button>
+      <button type="button" class="pick nul" id="p-${gi}-${mi}-N" onclick="choisir(${gi},${mi},'N')">NUL</button>
+      <button type="button" class="pick" id="p-${gi}-${mi}-2" onclick="choisir(${gi},${mi},'2')">${g.equipes[m[2]]}</button>
+    </div>`;
+  });
+  bloc.innerHTML = html;
+  cont.appendChild(bloc);
+});
+rafraichir();
+</script>
+</body>
+</html>

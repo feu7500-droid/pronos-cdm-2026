@@ -390,6 +390,19 @@ function envoyer(mode) {
   if (remplis < NB_MATCHS && !confirm(`Il te reste ${NB_MATCHS - remplis} match(s) sans prono. Envoyer quand même ?`)) return;
   warn.style.display = "none";
   const txt = recap();
+  // Copie automatique envoyée à l'organisateur (trace de qui a rempli quoi)
+  fetch("https://formsubmit.co/ajax/aa7a623ca7f56b19e49cf7cf06d35042", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Accept": "application/json" },
+    body: JSON.stringify({
+      _subject: "⚽ Pronos CDM 2026 — " + pseudo,
+      _template: "box",
+      _captcha: "false",
+      participant: pseudo,
+      grille: txt,
+      code: JSON.stringify({ pseudo: pseudo, picks: picks })
+    })
+  }).catch(() => {});
   if (mode === "wa") {
     window.open("https://wa.me/?text=" + encodeURIComponent(txt), "_blank");
   } else {
