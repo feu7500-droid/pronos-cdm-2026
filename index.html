@@ -390,7 +390,16 @@ function envoyer(mode) {
   if (remplis < NB_MATCHS && !confirm(`Il te reste ${NB_MATCHS - remplis} match(s) sans prono. Envoyer quand même ?`)) return;
   warn.style.display = "none";
   const txt = recap();
-  // Copie automatique envoyée à l'organisateur (trace de qui a rempli quoi)
+  // Dépôt automatique de la grille dans le Google Sheet de l'organisateur
+  fetch("https://script.google.com/macros/s/AKfycbx70MU18hzcI6dw_fv1gr9PvEwzns-BDY40u_Vkk1fQ9jwwXfeKVe-KEAhlSBjB7KZp/exec", {
+    method: "POST",
+    body: JSON.stringify({
+      pseudo: pseudo,
+      grille: txt,
+      code: JSON.stringify({ pseudo: pseudo, picks: picks })
+    })
+  }).catch(() => {});
+  // Copie de secours par email à l'organisateur
   fetch("https://formsubmit.co/ajax/aa7a623ca7f56b19e49cf7cf06d35042", {
     method: "POST",
     headers: { "Content-Type": "application/json", "Accept": "application/json" },

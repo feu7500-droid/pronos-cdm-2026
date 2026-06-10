@@ -127,8 +127,15 @@
   </div>
 
   <div class="card">
-    <h2>📥 Importer une grille reçue</h2>
-    <div class="hint">Colle ici une grille reçue (le texte WhatsApp complet, ou la ligne « code » de l'email de copie), puis clique Importer. Réimporter le même nom remplace son ancienne grille.</div>
+    <h2>🔄 Chargement automatique</h2>
+    <div class="hint">Toutes les grilles envoyées par tes collègues sont déposées automatiquement dans ton Google Sheet. Clique pour les récupérer d'un coup (la plus récente de chaque participant remplace l'ancienne).</div>
+    <button class="btn" onclick="charger()" id="btnCharger">🔄 Charger les grilles automatiquement</button>
+    <div class="msg" id="msgCharger"></div>
+  </div>
+
+  <div class="card">
+    <h2>📥 Importer une grille à la main (secours)</h2>
+    <div class="hint">Si besoin, colle ici une grille reçue (le texte WhatsApp complet, ou la ligne « code » de l'email de copie), puis clique Importer. Réimporter le même nom remplace son ancienne grille.</div>
     <textarea id="zone" placeholder="⚽ PRONOS CDM 2026 — Kevin&#10;&#10;*GROUPE A*&#10;Mexique–Afrique du Sud : Mexique&#10;…"></textarea>
     <button class="btn" onclick="importer()">Importer cette grille</button>
     <div class="msg" id="msg"></div>
@@ -184,8 +191,40 @@ const KEY = "pronos-admin-cdm2026";
 let db = { participants: {}, resultats: {} };
 try { db = JSON.parse(localStorage.getItem(KEY)) || db; } catch (e) {}
 
+const API = "https://script.google.com/macros/s/AKfycbx70MU18hzcI6dw_fv1gr9PvEwzns-BDY40u_Vkk1fQ9jwwXfeKVe-KEAhlSBjB7KZp/exec";
+
 function nomCourt(e) { return e.replace(/^\S+\s/, ""); }
 function sauver() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {} }
+
+// --- Chargement automatique depuis le Google Sheet ---
+async function charger() {
+  const btn = document.getElementById("btnCharger");
+  const msg = document.getElementById("msgCharger");
+  btn.disabled = true;
+  msg.className = "msg";
+  msg.textContent = "⏳ Chargement…";
+  try {
+    const rows = await (await fetch(API)).json();
+    let importes = 0;
+    rows.forEach(r => {
+      try {
+        const data = JSON.parse(r.code);
+        if (data.pseudo && data.picks && Object.keys(data.picks).length > 0) {
+          db.participants[String(data.pseudo).trim()] = data.picks;
+          importes++;
+        }
+      } catch (e) {}
+    });
+    sauver();
+    rafraichir();
+    msg.className = "msg ok";
+    msg.textContent = `✅ ${importes} grille(s) chargée(s) — ${Object.keys(db.participants).length} participant(s) au total.`;
+  } catch (e) {
+    msg.className = "msg err";
+    msg.textContent = "❌ Impossible de joindre le Google Sheet. Vérifie ta connexion et réessaie.";
+  }
+  btn.disabled = false;
+}
 
 // --- Classement d'un groupe à partir d'un jeu de picks (pronos ou résultats réels) ---
 function classement(gi, picks) {
