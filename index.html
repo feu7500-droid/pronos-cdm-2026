@@ -106,25 +106,32 @@
     font-weight: 700;
   }
 
-  .qualifs {
-    display: flex;
-    gap: 8px;
+  .classement {
     margin-top: 10px;
     padding-top: 10px;
     border-top: 2px dashed #d8dbe8;
   }
-  .qualifs > div { flex: 1; }
-  .qualifs label { font-size: 11.5px; font-weight: 700; color: #555; display: block; margin-bottom: 4px; }
-  .qualifs select {
-    width: 100%;
-    padding: 10px 8px;
-    font-size: 14px;
-    border: 2px solid #c5c9d8;
-    border-radius: 9px;
-    background: #f7f8fc;
-    outline: none;
+  .classement .titre { font-size: 11.5px; font-weight: 700; color: #555; margin-bottom: 6px; }
+  .classement .ligne {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    padding: 5px 10px;
+    border-radius: 8px;
+    margin-bottom: 3px;
+    background: #f4f5fa;
+    color: #777;
   }
-  .qualifs select.ok { border-color: #2a9d4a; background: #eefaf1; }
+  .classement .ligne.q {
+    background: #eefaf1;
+    color: #1a1a2e;
+    font-weight: 700;
+    border: 1.5px solid #2a9d4a;
+  }
+  .classement .pts { font-size: 11.5px; color: #888; font-weight: 400; }
+  .classement .ligne.q .pts { color: #2a9d4a; font-weight: 700; }
+  .classement .attente { font-size: 12px; color: #999; font-style: italic; }
 
   .actions { text-align: center; padding-bottom: 30px; }
   .btn {
@@ -185,7 +192,7 @@
   <div class="header">
     <h1>⚽ PRONOS <em>COUPE DU MONDE 2026</em> 🏆</h1>
     <p>Phase de poules · 11 → 28 juin (heures FR)<br>
-    Pour chaque match, touche l'équipe gagnante (ou « Nul »), choisis les qualifiés, puis envoie ta grille en bas de page !</p>
+    Pour chaque match, touche l'équipe gagnante (ou « Nul ») — le classement du groupe se calcule tout seul. Puis envoie ta grille en bas de page !</p>
   </div>
 
   <div class="card nom">
@@ -259,11 +266,7 @@ GROUPES.forEach((g, gi) => {
       <button type="button" class="pick" id="p-${gi}-${mi}-2" onclick="choisir(${gi},${mi},'2')">${g.equipes[m[2]]}</button>
     </div>`;
   });
-  const opts = `<option value="">— choisir —</option>` + g.equipes.map((e, i) => `<option value="${i}">${e}</option>`).join("");
-  html += `<div class="qualifs">
-    <div><label>🥇 1er du groupe</label><select id="q-${gi}-0">${opts}</select></div>
-    <div><label>🥈 2e du groupe</label><select id="q-${gi}-1">${opts}</select></div>
-  </div>`;
+  html += `<div class="classement"><div class="titre">📊 Classement selon tes pronos (auto)</div><div id="cl-${gi}"></div></div>`;
   card.innerHTML = html;
   cont.appendChild(card);
 });
@@ -275,10 +278,39 @@ function choisir(gi, mi, val) {
   maj();
 }
 
+// --- Classement automatique d'un groupe ---
+// Victoire = 3 pts, nul = 1 pt. Égalité de points : confrontation directe, puis nb de victoires.
+function classement(gi) {
+  const g = GROUPES[gi];
+  const st = g.equipes.map((e, i) => ({ i, pts: 0, v: 0 }));
+  let complets = 0;
+  g.matchs.forEach((m, mi) => {
+    const val = picks[`${gi}-${mi}`];
+    if (!val) return;
+    complets++;
+    if (val === "1") { st[m[1]].pts += 3; st[m[1]].v++; }
+    else if (val === "2") { st[m[2]].pts += 3; st[m[2]].v++; }
+    else { st[m[1]].pts += 1; st[m[2]].pts += 1; }
+  });
+  st.sort((a, b) => {
+    if (b.pts !== a.pts) return b.pts - a.pts;
+    // confrontation directe
+    const duel = g.matchs.findIndex(m => (m[1] === a.i && m[2] === b.i) || (m[1] === b.i && m[2] === a.i));
+    if (duel !== -1) {
+      const val = picks[`${gi}-${duel}`];
+      const m = g.matchs[duel];
+      if (val === "1") return m[1] === a.i ? -1 : 1;
+      if (val === "2") return m[2] === a.i ? -1 : 1;
+    }
+    if (b.v !== a.v) return b.v - a.v;
+    return a.i - b.i;
+  });
+  return { st, complet: complets === 6 };
+}
+
 // --- Sauvegarde auto + progression ---
 function sauver() {
-  const data = { pseudo: document.getElementById("pseudo").value, picks: picks, q: {} };
-  document.querySelectorAll("select").forEach(el => { data.q[el.id] = el.value; });
+  const data = { pseudo: document.getElementById("pseudo").value, picks: picks };
   try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
 }
 function restaurer() {
@@ -287,25 +319,28 @@ function restaurer() {
     if (!data) return;
     if (data.pseudo) document.getElementById("pseudo").value = data.pseudo;
     picks = data.picks || {};
-    Object.entries(data.q || {}).forEach(([id, val]) => {
-      const el = document.getElementById(id);
-      if (el) el.value = val;
-    });
   } catch (e) {}
 }
+const MEDAILLES = ["🥇", "🥈", "3.", "4."];
 function maj() {
   let remplis = 0;
   for (let gi = 0; gi < 12; gi++) {
+    let majGroupe = 0;
     for (let mi = 0; mi < 6; mi++) {
       const val = picks[`${gi}-${mi}`];
-      if (val) remplis++;
+      if (val) { remplis++; majGroupe++; }
       ["1", "N", "2"].forEach(v => {
         document.getElementById(`p-${gi}-${mi}-${v}`).classList.toggle("sel", val === v);
       });
     }
-    for (let q = 0; q < 2; q++) {
-      const s = document.getElementById(`q-${gi}-${q}`);
-      s.classList.toggle("ok", s.value !== "");
+    const zone = document.getElementById(`cl-${gi}`);
+    if (majGroupe === 0) {
+      zone.innerHTML = `<div class="attente">Le classement se remplira tout seul avec tes pronos 😉</div>`;
+    } else {
+      const { st, complet } = classement(gi);
+      zone.innerHTML = st.map((t, pos) =>
+        `<div class="ligne${complet && pos < 2 ? " q" : ""}"><span>${MEDAILLES[pos]} ${GROUPES[gi].equipes[t.i]}</span><span class="pts">${t.pts} pt${t.pts > 1 ? "s" : ""}</span></div>`
+      ).join("") + (complet ? "" : `<div class="attente">… encore ${6 - majGroupe} match(s) à pronostiquer</div>`);
     }
   }
   const p = document.getElementById("progress");
@@ -332,9 +367,12 @@ function recap() {
       else if (val === "N") prono = "Nul";
       txt += `${nomCourt(g.equipes[m[1]])}–${nomCourt(g.equipes[m[2]])} : ${prono}\n`;
     });
-    const q1 = document.getElementById(`q-${gi}-0`).value;
-    const q2 = document.getElementById(`q-${gi}-1`).value;
-    txt += `➡️ 1er: ${q1 !== "" ? nomCourt(g.equipes[q1]) : "?"} · 2e: ${q2 !== "" ? nomCourt(g.equipes[q2]) : "?"}\n`;
+    const { st, complet } = classement(gi);
+    if (complet) {
+      txt += `➡️ 1er: ${nomCourt(g.equipes[st[0].i])} (${st[0].pts} pts) · 2e: ${nomCourt(g.equipes[st[1].i])} (${st[1].pts} pts)\n`;
+    } else {
+      txt += `➡️ 1er: ? · 2e: ?\n`;
+    }
   });
   return txt;
 }
