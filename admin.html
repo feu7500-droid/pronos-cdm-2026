@@ -119,6 +119,20 @@
 </style>
 </head>
 <body>
+
+<div id="verrou" style="position:fixed;inset:0;background:#10142b;z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:14px;padding:24px;max-width:360px;width:100%;text-align:center;">
+    <div style="font-size:34px;margin-bottom:8px;">🔒</div>
+    <h2 style="font-size:16px;margin-bottom:6px;">Page organisateur</h2>
+    <p style="font-size:12.5px;color:#666;margin-bottom:14px;">Cette page est réservée à l'organisateur des pronos.</p>
+    <input type="password" id="codeAcces" placeholder="Code d'accès" autocomplete="off"
+      style="width:100%;padding:12px;font-size:16px;border:2px solid #1a1a2e;border-radius:10px;outline:none;text-align:center;">
+    <button onclick="deverrouiller()"
+      style="width:100%;margin-top:10px;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;background:#4361ee;color:#fff;font-family:inherit;">Entrer</button>
+    <div id="verrouMsg" style="color:#e63946;font-size:13px;font-weight:700;margin-top:10px;display:none;">❌ Code incorrect</div>
+  </div>
+</div>
+
 <div class="wrap">
 
   <div class="header">
@@ -161,6 +175,25 @@
 </div>
 
 <script>
+// --- Verrou d'accès : seule l'empreinte SHA-256 du code est stockée ici (irréversible) ---
+const EMPREINTE = "96f444fb551b896a02642caa7a887110de833d1e408d169da4da4d721af400a4";
+const CLE_ACCES = "pronos-admin-acces";
+async function empreinte(texte) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(texte));
+  return [...new Uint8Array(buf)].map(o => o.toString(16).padStart(2, "0")).join("");
+}
+async function deverrouiller() {
+  const saisie = document.getElementById("codeAcces").value.trim();
+  if (await empreinte(saisie) === EMPREINTE) {
+    try { localStorage.setItem(CLE_ACCES, EMPREINTE); } catch (e) {}
+    document.getElementById("verrou").remove();
+  } else {
+    document.getElementById("verrouMsg").style.display = "block";
+  }
+}
+document.getElementById("codeAcces").addEventListener("keydown", e => { if (e.key === "Enter") deverrouiller(); });
+try { if (localStorage.getItem(CLE_ACCES) === EMPREINTE) document.getElementById("verrou").remove(); } catch (e) {}
+
 const GROUPES = [
   { lettre: "A", equipes: ["🇲🇽 Mexique","🇿🇦 Afrique du Sud","🇰🇷 Corée du Sud","🇨🇿 Tchéquie"],
     matchs: [["11/06",0,1],["12/06",2,3],["18/06",3,1],["19/06",0,2],["25/06",3,0],["25/06",1,2]] },
