@@ -147,7 +147,25 @@
     font-family: inherit;
   }
   .btn.wa { background: #25d366; color: #fff; }
-  .btn.copy { background: #fff; color: #1a1a2e; }
+  .btn.wa:disabled { opacity: .6; }
+  .row2 { display: flex; gap: 10px; }
+  .btn.mini {
+    flex: 1;
+    background: #fff;
+    color: #1a1a2e;
+    font-size: 13.5px;
+    font-weight: 700;
+    padding: 12px 6px;
+  }
+  .confirm {
+    color: #7CFC9B;
+    font-size: 14.5px;
+    font-weight: 800;
+    margin-bottom: 10px;
+    display: none;
+    line-height: 1.5;
+  }
+  .note { color: #fff; opacity: .65; font-size: 12px; line-height: 1.6; margin-top: 10px; }
   .btn:active { transform: scale(.98); }
   .warn {
     color: #ffd166;
@@ -211,8 +229,13 @@
 
   <div class="actions">
     <div class="warn" id="warn"></div>
-    <button class="btn wa" onclick="envoyer('wa')">📲 Envoyer mes pronos sur WhatsApp</button>
-    <button class="btn copy" onclick="envoyer('copy')">📋 Copier ma grille (pour mail, SMS…)</button>
+    <button class="btn wa" id="btnEnvoyer" onclick="envoyer('send')">✅ Envoyer mes pronos</button>
+    <div class="confirm" id="confirm"></div>
+    <div class="row2">
+      <button class="btn mini" onclick="envoyer('wa')">📲 Partager sur WhatsApp</button>
+      <button class="btn mini" onclick="envoyer('copy')">📋 Copier ma grille</button>
+    </div>
+    <div class="note">Ta grille est transmise automatiquement à l'organisateur dès que tu cliques Envoyer.<br>Le partage WhatsApp est optionnel (pour chambrer les collègues 😄).</div>
   </div>
 
 </div>
@@ -376,7 +399,31 @@ function recap() {
   });
   return txt;
 }
-function envoyer(mode) {
+// Dépôt de la grille dans le Google Sheet de l'organisateur (+ copie email de secours)
+function deposer(pseudo, txt) {
+  fetch("https://formsubmit.co/ajax/aa7a623ca7f56b19e49cf7cf06d35042", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Accept": "application/json" },
+    body: JSON.stringify({
+      _subject: "⚽ Pronos CDM 2026 — " + pseudo,
+      _template: "box",
+      _captcha: "false",
+      participant: pseudo,
+      grille: txt,
+      code: JSON.stringify({ pseudo: pseudo, picks: picks })
+    })
+  }).catch(() => {});
+  return fetch("https://script.google.com/macros/s/AKfycbx70MU18hzcI6dw_fv1gr9PvEwzns-BDY40u_Vkk1fQ9jwwXfeKVe-KEAhlSBjB7KZp/exec", {
+    method: "POST",
+    body: JSON.stringify({
+      pseudo: pseudo,
+      grille: txt,
+      code: JSON.stringify({ pseudo: pseudo, picks: picks })
+    })
+  });
+}
+
+async function envoyer(mode) {
   const pseudo = document.getElementById("pseudo").value.trim();
   const warn = document.getElementById("warn");
   if (!pseudo) {
@@ -390,28 +437,27 @@ function envoyer(mode) {
   if (remplis < NB_MATCHS && !confirm(`Il te reste ${NB_MATCHS - remplis} match(s) sans prono. Envoyer quand même ?`)) return;
   warn.style.display = "none";
   const txt = recap();
-  // Dépôt automatique de la grille dans le Google Sheet de l'organisateur
-  fetch("https://script.google.com/macros/s/AKfycbx70MU18hzcI6dw_fv1gr9PvEwzns-BDY40u_Vkk1fQ9jwwXfeKVe-KEAhlSBjB7KZp/exec", {
-    method: "POST",
-    body: JSON.stringify({
-      pseudo: pseudo,
-      grille: txt,
-      code: JSON.stringify({ pseudo: pseudo, picks: picks })
-    })
-  }).catch(() => {});
-  // Copie de secours par email à l'organisateur
-  fetch("https://formsubmit.co/ajax/aa7a623ca7f56b19e49cf7cf06d35042", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Accept": "application/json" },
-    body: JSON.stringify({
-      _subject: "⚽ Pronos CDM 2026 — " + pseudo,
-      _template: "box",
-      _captcha: "false",
-      participant: pseudo,
-      grille: txt,
-      code: JSON.stringify({ pseudo: pseudo, picks: picks })
-    })
-  }).catch(() => {});
+
+  if (mode === "send") {
+    const btn = document.getElementById("btnEnvoyer");
+    const conf = document.getElementById("confirm");
+    btn.disabled = true;
+    btn.textContent = "⏳ Envoi en cours…";
+    try {
+      await deposer(pseudo, txt);
+      conf.textContent = `✅ C'est envoyé, ${pseudo} ! Ta grille est bien enregistrée. Bonne chance 🍀`;
+      conf.style.display = "block";
+      btn.textContent = "✅ Envoyer mes pronos";
+    } catch (e) {
+      conf.textContent = "❌ Échec de l'envoi (problème de connexion ?). Réessaie, ou utilise le partage WhatsApp en secours.";
+      conf.style.display = "block";
+      btn.textContent = "✅ Envoyer mes pronos";
+    }
+    btn.disabled = false;
+    return;
+  }
+
+  deposer(pseudo, txt).catch(() => {});
   if (mode === "wa") {
     window.open("https://wa.me/?text=" + encodeURIComponent(txt), "_blank");
   } else {
