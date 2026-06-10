@@ -399,20 +399,8 @@ function recap() {
   });
   return txt;
 }
-// Dépôt de la grille dans le Google Sheet de l'organisateur (+ copie email de secours)
+// Dépôt de la grille dans le Google Sheet de l'organisateur
 function deposer(pseudo, txt) {
-  fetch("https://formsubmit.co/ajax/aa7a623ca7f56b19e49cf7cf06d35042", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Accept": "application/json" },
-    body: JSON.stringify({
-      _subject: "⚽ Pronos CDM 2026 — " + pseudo,
-      _template: "box",
-      _captcha: "false",
-      participant: pseudo,
-      grille: txt,
-      code: JSON.stringify({ pseudo: pseudo, picks: picks })
-    })
-  }).catch(() => {});
   return fetch("https://script.google.com/macros/s/AKfycbx70MU18hzcI6dw_fv1gr9PvEwzns-BDY40u_Vkk1fQ9jwwXfeKVe-KEAhlSBjB7KZp/exec", {
     method: "POST",
     body: JSON.stringify({
