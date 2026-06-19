@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>🏆 Résultats — Pronos CDM 2026</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #10142b;
+    color: #1a1a2e;
+    padding: 12px;
+  }
+  .wrap { max-width: 680px; margin: 0 auto; }
+  .header { text-align: center; color: #fff; padding: 16px 10px 12px; }
+  .header h1 { font-size: 20px; }
+  .header p { font-size: 13px; opacity: .75; margin-top: 5px; }
+
+  .card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.25);
+  }
+  .card h2 { font-size: 15px; margin-bottom: 8px; }
+  .hint { font-size: 12px; color: #666; line-height: 1.5; margin-bottom: 8px; }
+  .vide { font-size: 13px; color: #999; font-style: italic; }
+
+  table.board { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.board th {
+    text-align: left;
+    background: #1a1a2e;
+    color: #fff;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  table.board th:first-child { border-radius: 8px 0 0 8px; }
+  table.board th:last-child { border-radius: 0 8px 8px 0; }
+  table.board td { padding: 9px 10px; border-bottom: 1px solid #ececec; }
+  table.board tr.podium td { background: #fdf6e3; font-weight: 700; }
+  .total { font-weight: 800; color: #2a9d4a; font-size: 15px; }
+
+  .groupe-bloc { margin-bottom: 14px; }
+  .groupe-nom {
+    background: #1a1a2e;
+    color: #fff;
+    border-radius: 8px;
+    padding: 6px 11px;
+    font-weight: 800;
+    font-size: 13px;
+    margin-bottom: 7px;
+  }
+  .match {
+    display: grid;
+    grid-template-columns: 34px 1fr 40px 1fr;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 12.5px;
+  }
+  .match:last-child { border-bottom: none; }
+  .match .date { font-size: 10px; color: #999; }
+  .match .eq { padding: 2px 0; }
+  .match .eq.d { text-align: right; }
+  .match .eq.win { font-weight: 800; color: #1a7a36; }
+  .match .res {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #b07a00;
+  }
+  .match .res.attente { color: #bbb; font-weight: 400; }
+
+  .btn {
+    border: none; border-radius: 10px; padding: 11px 18px;
+    font-size: 14px; font-weight: 800; cursor: pointer;
+    background: #4361ee; color: #fff; font-family: inherit;
+  }
+  .maj { text-align: center; color: #fff; opacity: .6; font-size: 11.5px; margin-bottom: 14px; }
+</style>
+</head>
+<body>
+
+<div id="verrou" style="position:fixed;inset:0;background:#10142b;z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:14px;padding:24px;max-width:360px;width:100%;text-align:center;">
+    <div style="font-size:34px;margin-bottom:8px;">🔒</div>
+    <h2 style="font-size:16px;margin-bottom:6px;">Résultats des pronos</h2>
+    <p style="font-size:12.5px;color:#666;margin-bottom:14px;">Entre le code donné par l'organisateur pour voir le classement.</p>
+    <input type="password" id="codeAcces" placeholder="Code d'accès" autocomplete="off"
+      style="width:100%;padding:12px;font-size:16px;border:2px solid #1a1a2e;border-radius:10px;outline:none;text-align:center;">
+    <button onclick="deverrouiller()"
+      style="width:100%;margin-top:10px;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;background:#4361ee;color:#fff;font-family:inherit;">Entrer</button>
+    <div id="verrouMsg" style="color:#e63946;font-size:13px;font-weight:700;margin-top:10px;display:none;">❌ Code incorrect</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="header">
+    <h1>🏆 RÉSULTATS — Pronos CDM 2026</h1>
+    <p>Classement des collègues, mis à jour au fil des matchs</p>
+  </div>
+  <div class="maj" id="maj"></div>
+
+  <div class="card">
+    <h2>🏆 Classement</h2>
+    <div class="hint">Barème : bon prono = 1 pt · les 2 qualifiés d'un groupe dans le bon ordre = 2 pts (1 pt si bon duo, mauvais ordre).</div>
+    <div id="board"><div class="vide">Chargement…</div></div>
+    <div style="text-align:center;margin-top:12px;"><button class="btn" onclick="recharger()">🔄 Actualiser</button></div>
+  </div>
+
+  <div class="card">
+    <h2>🏟️ Résultats des matchs</h2>
+    <div id="groupes"><div class="vide">Chargement…</div></div>
+  </div>
+</div>
+
+<script>
+// --- Verrou lecture seule ---
+const EMPREINTE = "26965a80a2a28e24c983a046337aaa070c246db9e4c4da7a83db2f70d28f306e";
+const CLE_ACCES = "pronos-resultats-acces";
+async function empreinte(t) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t));
+  return [...new Uint8Array(buf)].map(o => o.toString(16).padStart(2, "0")).join("");
+}
+async function deverrouiller() {
+  const saisie = document.getElementById("codeAcces").value.trim();
+  if (await empreinte(saisie) === EMPREINTE) {
+    try { localStorage.setItem(CLE_ACCES, EMPREINTE); } catch (e) {}
+    document.getElementById("verrou").remove();
+    recharger();
+  } else {
+    document.getElementById("verrouMsg").style.display = "block";
+  }
+}
+document.getElementById("codeAcces").addEventListener("keydown", e => { if (e.key === "Enter") deverrouiller(); });
+
+const GROUPES = [
+  { lettre: "A", equipes: ["🇲🇽 Mexique","🇿🇦 Afrique du Sud","🇰🇷 Corée du Sud","🇨🇿 Tchéquie"],
+    matchs: [["11/06",0,1],["12/06",2,3],["18/06",3,1],["19/06",0,2],["25/06",3,0],["25/06",1,2]] },
+  { lettre: "B", equipes: ["🇨🇦 Canada","🇧🇦 Bosnie-Herzégovine","🇶🇦 Qatar","🇨🇭 Suisse"],
+    matchs: [["12/06",0,1],["13/06",2,3],["18/06",3,1],["19/06",0,2],["24/06",3,0],["24/06",1,2]] },
+  { lettre: "C", equipes: ["🇧🇷 Brésil","🇲🇦 Maroc","🇭🇹 Haïti","🏴󠁧󠁢󠁳󠁣󠁴󠁿 Écosse"],
+    matchs: [["14/06",0,1],["14/06",2,3],["20/06",3,1],["20/06",0,2],["25/06",3,0],["25/06",1,2]] },
+  { lettre: "D", equipes: ["🇺🇸 États-Unis","🇵🇾 Paraguay","🇦🇺 Australie","🇹🇷 Turquie"],
+    matchs: [["13/06",0,1],["14/06",2,3],["19/06",0,2],["20/06",3,1],["26/06",3,0],["26/06",1,2]] },
+  { lettre: "E", equipes: ["🇩🇪 Allemagne","🇨🇼 Curaçao","🇨🇮 Côte d'Ivoire","🇪🇨 Équateur"],
+    matchs: [["14/06",0,1],["15/06",2,3],["20/06",0,2],["21/06",3,1],["25/06",3,0],["25/06",1,2]] },
+  { lettre: "F", equipes: ["🇳🇱 Pays-Bas","🇯🇵 Japon","🇸🇪 Suède","🇹🇳 Tunisie"],
+    matchs: [["14/06",0,1],["15/06",2,3],["20/06",0,2],["21/06",3,1],["26/06",1,2],["26/06",3,0]] },
+  { lettre: "G", equipes: ["🇧🇪 Belgique","🇪🇬 Égypte","🇮🇷 Iran","🇳🇿 Nouvelle-Zélande"],
+    matchs: [["15/06",0,1],["16/06",2,3],["21/06",0,2],["22/06",3,1],["27/06",1,2],["27/06",3,0]] },
+  { lettre: "H", equipes: ["🇪🇸 Espagne","🇨🇻 Cap-Vert","🇸🇦 Arabie saoudite","🇺🇾 Uruguay"],
+    matchs: [["15/06",0,1],["16/06",2,3],["21/06",0,2],["22/06",3,1],["27/06",1,2],["27/06",3,0]] },
+  { lettre: "I", equipes: ["🇫🇷 France","🇸🇳 Sénégal","🇮🇶 Irak","🇳🇴 Norvège"],
+    matchs: [["16/06",0,1],["17/06",2,3],["22/06",0,2],["23/06",3,1],["26/06",3,0],["26/06",1,2]] },
+  { lettre: "J", equipes: ["🇦🇷 Argentine","🇩🇿 Algérie","🇦🇹 Autriche","🇯🇴 Jordanie"],
+    matchs: [["17/06",0,1],["17/06",2,3],["22/06",0,2],["23/06",3,1],["28/06",1,2],["28/06",3,0]] },
+  { lettre: "K", equipes: ["🇵🇹 Portugal","🇨🇩 RD Congo","🇺🇿 Ouzbékistan","🇨🇴 Colombie"],
+    matchs: [["17/06",0,1],["18/06",2,3],["23/06",0,2],["24/06",3,1],["28/06",3,0],["28/06",1,2]] },
+  { lettre: "L", equipes: ["🏴󠁧󠁢󠁥󠁮󠁧󠁿 Angleterre","🇭🇷 Croatie","🇬🇭 Ghana","🇵🇦 Panama"],
+    matchs: [["17/06",0,1],["18/06",2,3],["23/06",0,2],["24/06",3,1],["27/06",3,0],["27/06",1,2]] },
+];
+const API = "https://script.google.com/macros/s/AKfycbx70MU18hzcI6dw_fv1gr9PvEwzns-BDY40u_Vkk1fQ9jwwXfeKVe-KEAhlSBjB7KZp/exec";
+
+let participants = {};   // pseudo -> picks
+let resultats = {};      // "gi-mi" -> "1"|"N"|"2"
+
+function nomCourt(e) { return e.replace(/^\S+\s/, ""); }
+
+function classement(gi, picks) {
+  const g = GROUPES[gi];
+  const st = g.equipes.map((e, i) => ({ i, pts: 0, v: 0 }));
+  let complets = 0;
+  g.matchs.forEach((m, mi) => {
+    const val = picks[`${gi}-${mi}`];
+    if (!val) return;
+    complets++;
+    if (val === "1") { st[m[1]].pts += 3; st[m[1]].v++; }
+    else if (val === "2") { st[m[2]].pts += 3; st[m[2]].v++; }
+    else { st[m[1]].pts += 1; st[m[2]].pts += 1; }
+  });
+  st.sort((a, b) => {
+    if (b.pts !== a.pts) return b.pts - a.pts;
+    const duel = g.matchs.findIndex(m => (m[1] === a.i && m[2] === b.i) || (m[1] === b.i && m[2] === a.i));
+    if (duel !== -1) {
+      const val = picks[`${gi}-${duel}`];
+      const m = g.matchs[duel];
+      if (val === "1") return m[1] === a.i ? -1 : 1;
+      if (val === "2") return m[2] === a.i ? -1 : 1;
+    }
+    if (b.v !== a.v) return b.v - a.v;
+    return a.i - b.i;
+  });
+  return { st, complet: complets === 6 };
+}
+
+function points(picks) {
+  let ptsMatchs = 0, ptsQualifs = 0;
+  for (let gi = 0; gi < 12; gi++) {
+    for (let mi = 0; mi < 6; mi++) {
+      const reel = resultats[`${gi}-${mi}`];
+      if (reel && picks[`${gi}-${mi}`] === reel) ptsMatchs++;
+    }
+    const reel = classement(gi, resultats);
+    const prono = classement(gi, picks);
+    if (reel.complet && prono.complet) {
+      const r1 = reel.st[0].i, r2 = reel.st[1].i, p1 = prono.st[0].i, p2 = prono.st[1].i;
+      if (r1 === p1 && r2 === p2) ptsQualifs += 2;
+      else if ((p1 === r1 || p1 === r2) && (p2 === r1 || p2 === r2)) ptsQualifs += 1;
+    }
+  }
+  return { ptsMatchs, ptsQualifs, total: ptsMatchs + ptsQualifs };
+}
+
+async function recharger() {
+  document.getElementById("maj").textContent = "⏳ Mise à jour…";
+  try {
+    const rows = await (await fetch(API)).json();
+    participants = {};
+    resultats = {};
+    rows.forEach(r => {
+      try {
+        const data = JSON.parse(r.code);
+        if (data && data.picks && data.pseudo) {
+          participants[String(data.pseudo).trim()] = data.picks;
+        } else if (data && data.resultats) {
+          resultats = data.resultats;   // la dernière ligne __RESULTATS__ gagne
+        }
+      } catch (e) {}
+    });
+    afficher();
+    document.getElementById("maj").textContent = "✅ À jour";
+  } catch (e) {
+    document.getElementById("maj").textContent = "❌ Impossible de charger les données.";
+  }
+}
+
+function afficher() {
+  // classement
+  const noms = Object.keys(participants);
+  const board = document.getElementById("board");
+  const nbRes = Object.keys(resultats).length;
+  if (noms.length === 0) {
+    board.innerHTML = `<div class="vide">Aucun participant pour l'instant.</div>`;
+  } else if (nbRes === 0) {
+    board.innerHTML = `<div class="vide">Les matchs n'ont pas encore commencé — classement à venir.</div>`;
+  } else {
+    const rows = noms.map(n => ({ n, ...points(participants[n]) }))
+      .sort((a, b) => b.total - a.total || a.n.localeCompare(b.n));
+    board.innerHTML = `<table class="board">
+      <tr><th>#</th><th>Participant</th><th>Matchs</th><th>Qualifiés</th><th>Total</th></tr>
+      ${rows.map((r, i) => `<tr${i < 3 ? ' class="podium"' : ""}><td>${["🥇","🥈","🥉"][i] || (i + 1)}</td><td>${r.n}</td><td>${r.ptsMatchs}</td><td>${r.ptsQualifs}</td><td class="total">${r.total}</td></tr>`).join("")}
+    </table>`;
+  }
+
+  // résultats des matchs (lecture seule)
+  const cont = document.getElementById("groupes");
+  cont.innerHTML = GROUPES.map((g, gi) => {
+    const lignes = g.matchs.map((m, mi) => {
+      const val = resultats[`${gi}-${mi}`];
+      const e1 = g.equipes[m[1]], e2 = g.equipes[m[2]];
+      let res = `<span class="res attente">à jouer</span>`;
+      let c1 = "", c2 = "";
+      if (val === "1") { res = `<span class="res">✔</span>`; c1 = "win"; }
+      else if (val === "2") { res = `<span class="res">✔</span>`; c2 = "win"; }
+      else if (val === "N") { res = `<span class="res">NUL</span>`; }
+      return `<div class="match"><span class="date">${m[0]}</span><span class="eq d ${c1}">${e1}</span>${res}<span class="eq ${c2}">${e2}</span></div>`;
+    }).join("");
+    return `<div class="groupe-bloc"><div class="groupe-nom">GROUPE ${g.lettre}</div>${lignes}</div>`;
+  }).join("");
+}
+
+// déverrouillage auto si déjà entré
+try {
+  if (localStorage.getItem(CLE_ACCES) === EMPREINTE) {
+    document.getElementById("verrou").remove();
+    recharger();
+  }
+} catch (e) {}
+</script>
+</body>
+</html>
