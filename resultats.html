@@ -222,16 +222,25 @@ async function recharger() {
     const rows = await (await fetch(API)).json();
     participants = {};
     resultats = {};
+    let snapshot = null;
+    const grilles = {};
     rows.forEach(r => {
       try {
         const data = JSON.parse(r.code);
-        if (data && data.picks && data.pseudo) {
-          participants[String(data.pseudo).trim()] = data.picks;
-        } else if (data && data.resultats) {
-          resultats = data.resultats;   // la dernière ligne __RESULTATS__ gagne
+        if (data && data.resultats) {
+          snapshot = data;   // la dernière publication de l'organisateur gagne
+        } else if (data && data.picks && data.pseudo) {
+          grilles[String(data.pseudo).trim()] = data.picks;
         }
       } catch (e) {}
     });
+    if (snapshot) {
+      // miroir exact de l'admin au moment de la publication
+      resultats = snapshot.resultats || {};
+      participants = snapshot.participants || grilles;
+    } else {
+      participants = grilles;
+    }
     afficher();
     document.getElementById("maj").textContent = "✅ À jour";
   } catch (e) {

@@ -370,8 +370,8 @@ async function publier() {
       method: "POST",
       body: JSON.stringify({
         pseudo: "__RESULTATS__",
-        grille: "Résultats officiels (publiés par l'organisateur)",
-        code: JSON.stringify({ resultats: db.resultats })
+        grille: "Snapshot officiel (publié par l'organisateur)",
+        code: JSON.stringify({ participants: db.participants, resultats: db.resultats })
       })
     });
     msg.className = "msg ok";
